@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catálogo Mecánico IEC (ISO E) - Motores BT</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="glass-container">
+        <header>
+            <div class="logo">
+                <svg width="40" height="40" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="45" fill="none" stroke="var(--magenta)" stroke-width="4"/>
+                    <circle cx="50" cy="50" r="25" fill="none" stroke="var(--violet)" stroke-width="4"/>
+                    <path d="M 50 5 L 50 95 M 5 50 L 95 50" stroke="rgba(255,255,255,0.2)" stroke-width="2" stroke-dasharray="4"/>
+                </svg>
+            </div>
+            <div class="title-container">
+                <h1>Catálogo Mecánico IEC <span class="gradient-text">60072-1</span></h1>
+                <p>Sistema Experto de Dimensionamiento | Motores Trifásicos BT</p>
+            </div>
+        </header>
+
+        <main>
+            <section class="controls-panel">
+                <div class="control-group">
+                    <label for="carcasaSelect">1. Altura de Eje (H)</label>
+                    <select id="carcasaSelect">
+                        <option value="" disabled selected>Seleccione Carcasa (H)</option>
+                        <!-- Options populated by JS -->
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="longitudSelect">2. Tamaño (S / M / L)</label>
+                    <select id="longitudSelect" disabled>
+                        <option value="" disabled selected>Esperando Carcasa...</option>
+                    </select>
+                    <div class="size-legend">
+                        <span><strong>S:</strong> Small (Pequeño)</span>
+                        <span><strong>M:</strong> Medium (Mediano)</span>
+                        <span><strong>L:</strong> Large (Grande)</span>
+                    </div>
+                </div>
+                
+                <div class="data-display" id="dataDisplay">
+                    <h3>Dimensiones Clave</h3>
+                    <div class="data-grid">
+                        <div class="data-item"><span class="label">H (Altura Eje):</span> <span class="value" id="valH">-</span> <span class="unit">mm</span></div>
+                        <div class="data-item"><span class="label">A (Ancho Patín):</span> <span class="value" id="valA">-</span> <span class="unit">mm</span></div>
+                        <div class="data-item"><span class="label">B (Largo Patín):</span> <span class="value" id="valB">-</span> <span class="unit">mm</span></div>
+                        <div class="data-item"><span class="label">C (Hombro Eje):</span> <span class="value" id="valC">-</span> <span class="unit">mm</span></div>
+                        <div class="data-item"><span class="label">D (Diam. Eje):</span> <span class="value" id="valD">-</span> <span class="unit">mm</span></div>
+                        <div class="data-item"><span class="label">E (Largo Eje):</span> <span class="value" id="valE">-</span> <span class="unit">mm</span></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="visualization-panel">
+                <div class="views-header">
+                    <h2>Representación Gráfica ISO E</h2>
+                    <span class="badge">IM B3 (Patas)</span>
+                </div>
+                
+                <div class="svg-container" id="svgContainer">
+                    <div class="empty-state">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                        </svg>
+                        <p>Seleccione configuración para generar planos</p>
+                    </div>
+                    
+                    <!-- SVG will be injected here -->
+                    <svg id="motorDrawings" width="100%" height="100%" viewBox="0 0 1000 500" style="display: none;"></svg>
+                </div>
+                
+                <div class="technical-notes">
+                    <h4>Notas de Soporte</h4>
+                    <p id="toleranciaNotas"><strong>Tolerancias Eje (D):</strong> Esperando selección...</p>
+                    <p><strong>Nota:</strong> Método del primer diedro (ISO E). Vista lateral izquierda proyectada a la derecha.</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

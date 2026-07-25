@@ -102,6 +102,16 @@ function updateDisplay(h, lengthKey) {
     renderSVG(h, motor.A, b, motor.C, motor.D, motor.E);
 }
 
+// Etiqueta de cota con placa de fondo: interrumpe la línea/flecha en vez de superponerse al texto.
+// align: 'center' (cx = centro), 'end' (cx = borde derecho, para leaders que llegan por la derecha)
+function dimLabel(cx, cy, text, align = 'center') {
+    const charW = 8.6;
+    const w = text.length * charW + 10;
+    const h = 18;
+    const x = align === 'end' ? cx - w - 6 : cx - w / 2;
+    return `<rect x="${x}" y="${cy - h/2}" width="${w}" height="${h}" rx="3" class="dim-label-bg"/><text x="${x + w/2}" y="${cy + 5}" class="dim-text">${text}</text>`;
+}
+
 function renderSVG(H, A, B, C, D, E) {
     svgContainer.style.display = 'none';
     motorDrawings.style.display = 'block';
@@ -131,22 +141,51 @@ function renderSVG(H, A, B, C, D, E) {
     // VISTA FRONTAL (ALZADO) - Lado del Eje (Izq)
     // ----------------------------------------------------
     svgHTML += `<text x="${cx1}" y="450" class="view-label">VISTA FRONTAL</text>`;
-    
+
     // Base/Suelo
     svgHTML += `<line x1="${cx1 - sA/2 - 50}" y1="${cy1 + sH}" x2="${cx1 + sA/2 + 50}" y2="${cy1 + sH}" stroke="rgba(255,255,255,0.3)" stroke-width="2"/>`;
-    
+
     // Estator Circular (aproximación)
     const radioEstator = sH * 0.9;
     svgHTML += `<circle cx="${cx1}" cy="${cy1}" r="${radioEstator}" class="motor-outline motor-fill"/>`;
     svgHTML += `<circle cx="${cx1}" cy="${cy1}" r="${radioEstator*0.8}" class="motor-inner"/>`;
-    
-    // Patas (izq y der)
-    const pataH = sH * 0.15;
-    svgHTML += `<path d="M ${cx1 - sA/2 - 20} ${cy1 + sH} L ${cx1 - sA/2 + 20} ${cy1 + sH} L ${cx1 - sA/2} ${cy1 + sH - pataH} Z" class="motor-outline"/>`;
-    svgHTML += `<path d="M ${cx1 + sA/2 - 20} ${cy1 + sH} L ${cx1 + sA/2 + 20} ${cy1 + sH} L ${cx1 + sA/2} ${cy1 + sH - pataH} Z" class="motor-outline"/>`;
+
+    // Aletas de refrigeración (carcasa nervada) - dientes radiales sólidos, evitando la caja de bornes
+    const finCountFront = 16;
+    const finInnerR = radioEstator - 3, finOuterR = radioEstator + 16, finHalfW = 5.5;
+    for (let i = 0; i < finCountFront; i++) {
+        const angleDeg = (360 / finCountFront) * i;
+        if (angleDeg > 322 || angleDeg < 38) continue; // hueco para caja de bornes
+        const rad = (angleDeg * Math.PI) / 180;
+        const rx = Math.sin(rad), ry = -Math.cos(rad); // vector radial
+        const tx = Math.cos(rad), ty = Math.sin(rad);  // vector tangencial
+        const p1x = cx1 + finInnerR * rx - finHalfW * tx, p1y = cy1 + finInnerR * ry - finHalfW * ty;
+        const p2x = cx1 + finInnerR * rx + finHalfW * tx, p2y = cy1 + finInnerR * ry + finHalfW * ty;
+        const p3x = cx1 + finOuterR * rx + finHalfW * 0.45 * tx, p3y = cy1 + finOuterR * ry + finHalfW * 0.45 * ty;
+        const p4x = cx1 + finOuterR * rx - finHalfW * 0.45 * tx, p4y = cy1 + finOuterR * ry - finHalfW * 0.45 * ty;
+        svgHTML += `<polygon points="${p1x},${p1y} ${p2x},${p2y} ${p3x},${p3y} ${p4x},${p4y}" class="motor-fin-tooth"/>`;
+    }
+
+    // Caja de bornes (vista superior, proyectada)
+    const tbW = sA * 0.26, tbH = sH * 0.22;
+    svgHTML += `<rect x="${cx1 - tbW/2}" y="${cy1 - radioEstator - tbH + 5}" width="${tbW}" height="${tbH}" rx="3" class="motor-outline motor-fill"/>`;
+    svgHTML += `<line x1="${cx1 - tbW/2}" y1="${cy1 - radioEstator - tbH + 5 + tbH*0.35}" x2="${cx1 + tbW/2}" y2="${cy1 - radioEstator - tbH + 5 + tbH*0.35}" class="motor-seam"/>`;
+
+    // Patas (izq y der) como bloques rectangulares con orificios de fijación
+    const pataH = sH * 0.15, pataW = 40;
+    const boltR = Math.max(2.5, sD * 0.09);
+    [cx1 - sA/2, cx1 + sA/2].forEach(cxFoot => {
+        svgHTML += `<rect x="${cxFoot - pataW/2}" y="${cy1 + sH - pataH}" width="${pataW}" height="${pataH}" rx="2" class="motor-outline motor-fill"/>`;
+        svgHTML += `<circle cx="${cxFoot - pataW*0.22}" cy="${cy1 + sH - pataH/2}" r="${boltR}" class="bolt-hole"/>`;
+        svgHTML += `<circle cx="${cxFoot + pataW*0.22}" cy="${cy1 + sH - pataH/2}" r="${boltR}" class="bolt-hole"/>`;
+    });
 
     // Eje Central
     svgHTML += `<circle cx="${cx1}" cy="${cy1}" r="${sD/2}" class="motor-outline" fill="rgba(102, 252, 241, 0.2)"/>`;
+
+    // Chavetero (esquematico, a las 12h del eje)
+    const keyWFront = Math.max(6, sD * 0.32), keyDFront = Math.max(4, sD * 0.16);
+    svgHTML += `<rect x="${cx1 - keyWFront/2}" y="${cy1 - sD/2 - keyDFront + 2}" width="${keyWFront}" height="${keyDFront}" class="keyway"/>`;
 
     // Ejes de simetría
     svgHTML += `<line x1="${cx1}" y1="${cy1 - radioEstator - 20}" x2="${cx1}" y2="${cy1 + sH + 20}" class="motor-axis"/>`;
@@ -157,18 +196,18 @@ function renderSVG(H, A, B, C, D, E) {
     svgHTML += `<line x1="${cx1 + 10}" y1="${cy1}" x2="${cx1 + sA/2 + 50}" y2="${cy1}" class="dim-line"/>`;
     svgHTML += `<line x1="${cx1 + sA/2 + 10}" y1="${cy1 + sH}" x2="${cx1 + sA/2 + 50}" y2="${cy1 + sH}" class="dim-line"/>`;
     svgHTML += `<line x1="${cx1 + sA/2 + 35}" y1="${cy1}" x2="${cx1 + sA/2 + 35}" y2="${cy1 + sH}" class="dim-arrow" marker-start="url(#arrow)" marker-end="url(#arrow)"/>`;
-    svgHTML += `<text x="${cx1 + sA/2 + 55}" y="${cy1 + sH/2 + 5}" class="dim-text">H=${H}</text>`;
+    svgHTML += dimLabel(cx1 + sA/2 + 35, cy1 + sH/2, `H=${H}`);
 
     // Cota A
     const dimY_front = cy1 + sH + 25;
     svgHTML += `<line x1="${cx1 - sA/2}" y1="${cy1 + sH}" x2="${cx1 - sA/2}" y2="${dimY_front + 15}" class="dim-line"/>`;
     svgHTML += `<line x1="${cx1 + sA/2}" y1="${cy1 + sH}" x2="${cx1 + sA/2}" y2="${dimY_front + 15}" class="dim-line"/>`;
     svgHTML += `<line x1="${cx1 - sA/2}" y1="${dimY_front}" x2="${cx1 + sA/2}" y2="${dimY_front}" class="dim-arrow" marker-start="url(#arrow)" marker-end="url(#arrow)"/>`;
-    svgHTML += `<text x="${cx1}" y="${dimY_front - 5}" class="dim-text">A=${A}</text>`;
+    svgHTML += dimLabel(cx1, dimY_front, `A=${A}`);
 
-    // Cota D
+    // Cota D (leader)
     svgHTML += `<line x1="${cx1}" y1="${cy1}" x2="${cx1 - radioEstator - 15}" y2="${cy1 - radioEstator - 10}" class="dim-line"/>`;
-    svgHTML += `<text x="${cx1 - radioEstator - 25}" y="${cy1 - radioEstator - 15}" class="dim-text">ØD=${D}</text>`;
+    svgHTML += dimLabel(cx1 - radioEstator - 20, cy1 - radioEstator - 10, `ØD=${D}`, 'end');
 
 
     // ----------------------------------------------------
@@ -185,22 +224,61 @@ function renderSVG(H, A, B, C, D, E) {
 
     const cxHombro = ejeCentralPata1 - sC;
     const hocico = 15;
-    const inicioCuerpo = cxHombro + hocico; 
-    
+    const inicioCuerpo = cxHombro + hocico;
+
     // Cuerpo Rectangular (Carcasa lateral)
     const largoCuerpo = sB * 1.5;
     svgHTML += `<rect x="${inicioCuerpo}" y="${cy2 - radioEstator}" width="${largoCuerpo}" height="${radioEstator * 2}" class="motor-outline motor-fill" rx="10"/>`;
-    
-    // Patas laterales en forma de triángulo proyectado
-    svgHTML += `<path d="M ${ejeCentralPata1 - 20} ${cy2 + sH} L ${ejeCentralPata1 + 20} ${cy2 + sH} L ${ejeCentralPata1} ${cy2 + sH - pataH} Z" class="motor-outline"/>`;
-    svgHTML += `<path d="M ${ejeCentralPata2 - 20} ${cy2 + sH} L ${ejeCentralPata2 + 20} ${cy2 + sH} L ${ejeCentralPata2} ${cy2 + sH - pataH} Z" class="motor-outline"/>`;
+
+    // Aletas de refrigeración: costillas que sobresalen del contorno superior e inferior de la carcasa
+    const finCountLat = Math.max(6, Math.round(largoCuerpo / 22));
+    const finTabW = 6, finTabH = 7;
+    for (let i = 1; i <= finCountLat; i++) {
+        const xFin = inicioCuerpo + (largoCuerpo / (finCountLat + 1)) * i;
+        svgHTML += `<rect x="${xFin - finTabW/2}" y="${cy2 - radioEstator - finTabH + 3}" width="${finTabW}" height="${finTabH}" rx="1.5" class="motor-fin-tab"/>`;
+        svgHTML += `<rect x="${xFin - finTabW/2}" y="${cy2 + radioEstator - 3}" width="${finTabW}" height="${finTabH}" rx="1.5" class="motor-fin-tab"/>`;
+    }
+
+    // Tapas / uniones carcasa-escudos (costuras de ensamble)
+    svgHTML += `<line x1="${inicioCuerpo + largoCuerpo*0.12}" y1="${cy2 - radioEstator}" x2="${inicioCuerpo + largoCuerpo*0.12}" y2="${cy2 + radioEstator}" class="motor-seam"/>`;
+    svgHTML += `<line x1="${inicioCuerpo + largoCuerpo*0.86}" y1="${cy2 - radioEstator}" x2="${inicioCuerpo + largoCuerpo*0.86}" y2="${cy2 + radioEstator}" class="motor-seam"/>`;
+
+    // Caja de bornes sobre la carcasa
+    const tbWLat = largoCuerpo * 0.22, tbHLat = sH * 0.22;
+    const tbXLat = inicioCuerpo + largoCuerpo * 0.32;
+    svgHTML += `<rect x="${tbXLat}" y="${cy2 - radioEstator - tbHLat}" width="${tbWLat}" height="${tbHLat}" rx="3" class="motor-outline motor-fill"/>`;
+    svgHTML += `<line x1="${tbXLat}" y1="${cy2 - radioEstator - tbHLat + tbHLat*0.3}" x2="${tbXLat + tbWLat}" y2="${cy2 - radioEstator - tbHLat + tbHLat*0.3}" class="motor-seam"/>`;
+
+    // Tapa trasera / cubre-ventilador (extremo N)
+    const domeW = largoCuerpo * 0.16;
+    const domeX = inicioCuerpo + largoCuerpo;
+    svgHTML += `<path d="M ${domeX} ${cy2 - radioEstator} Q ${domeX + domeW} ${cy2} ${domeX} ${cy2 + radioEstator} Z" class="motor-outline motor-fill"/>`;
+    for (let i = -2; i <= 2; i++) {
+        const yVent = cy2 + i * (radioEstator * 0.32);
+        svgHTML += `<line x1="${domeX + domeW*0.2}" y1="${yVent}" x2="${domeX + domeW*0.75}" y2="${yVent}" class="motor-fin"/>`;
+    }
+
+    // Patas laterales como bloques rectangulares con orificios ocultos (líneas discontinuas)
+    [ejeCentralPata1, ejeCentralPata2].forEach(cxFoot => {
+        svgHTML += `<rect x="${cxFoot - 20}" y="${cy2 + sH - pataH}" width="40" height="${pataH}" rx="2" class="motor-outline motor-fill"/>`;
+        svgHTML += `<line x1="${cxFoot - 6}" y1="${cy2 + sH - pataH + 2}" x2="${cxFoot - 6}" y2="${cy2 + sH - 2}" class="motor-hidden"/>`;
+        svgHTML += `<line x1="${cxFoot + 6}" y1="${cy2 + sH - pataH + 2}" x2="${cxFoot + 6}" y2="${cy2 + sH - 2}" class="motor-hidden"/>`;
+    });
 
     // Eje saliente
     svgHTML += `<rect x="${cxHombro}" y="${cy2 - sD*0.8}" width="${hocico}" height="${sD*1.6}" class="motor-outline"/>`;
     svgHTML += `<rect x="${cxHombro - sE}" y="${cy2 - sD/2}" width="${sE}" height="${sD}" class="motor-outline" fill="rgba(102, 252, 241, 0.2)"/>`;
 
+    // Chavetero sobre el eje saliente
+    const keyWLat = sE * 0.55, keyDLat = Math.max(3, sD * 0.16);
+    svgHTML += `<rect x="${cxHombro - sE*0.85}" y="${cy2 - sD/2 - keyDLat + 2}" width="${keyWLat}" height="${keyDLat}" class="keyway"/>`;
+
+    // Chaflán en la punta del eje
+    svgHTML += `<path d="M ${cxHombro - sE} ${cy2 - sD/2} L ${cxHombro - sE + 5} ${cy2 - sD/2 + 5}" class="motor-outline"/>`;
+    svgHTML += `<path d="M ${cxHombro - sE} ${cy2 + sD/2} L ${cxHombro - sE + 5} ${cy2 + sD/2 - 5}" class="motor-outline"/>`;
+
     // Eje central de simetría horizontal
-    svgHTML += `<line x1="${cx2 - sB/2 - sC - sE - 20}" y1="${cy2}" x2="${cx2 + sB/2 + 50}" y2="${cy2}" class="motor-axis"/>`;
+    svgHTML += `<line x1="${cx2 - sB/2 - sC - sE - 20}" y1="${cy2}" x2="${domeX + domeW + 10}" y2="${cy2}" class="motor-axis"/>`;
 
     // ALTURA COMPARTIDA PARA COTAS A, E, C, B
     const dimY_lat = cy2 + sH + 25;
@@ -214,15 +292,15 @@ function renderSVG(H, A, B, C, D, E) {
     // COTAS (Lateral) Alineadas E, C, B
     // Cota B
     svgHTML += `<line x1="${ejeCentralPata1}" y1="${dimY_lat}" x2="${ejeCentralPata2}" y2="${dimY_lat}" class="dim-arrow" marker-start="url(#arrow)" marker-end="url(#arrow)"/>`;
-    svgHTML += `<text x="${cx2}" y="${dimY_lat - 5}" class="dim-text">B=${B}</text>`;
+    svgHTML += dimLabel(cx2, dimY_lat, `B=${B}`);
 
     // Cota C
     svgHTML += `<line x1="${cxHombro}" y1="${dimY_lat}" x2="${ejeCentralPata1}" y2="${dimY_lat}" class="dim-arrow" marker-start="url(#arrow)" marker-end="url(#arrow)"/>`;
-    svgHTML += `<text x="${cxHombro + sC/2}" y="${dimY_lat - 5}" class="dim-text">C=${C}</text>`;
+    svgHTML += dimLabel(cxHombro + sC/2, dimY_lat, `C=${C}`);
 
     // Cota E
     svgHTML += `<line x1="${cxHombro - sE}" y1="${dimY_lat}" x2="${cxHombro}" y2="${dimY_lat}" class="dim-arrow" marker-start="url(#arrow)" marker-end="url(#arrow)"/>`;
-    svgHTML += `<text x="${cxHombro - sE/2}" y="${dimY_lat - 5}" class="dim-text">E=${E}</text>`;
+    svgHTML += dimLabel(cxHombro - sE/2, dimY_lat, `E=${E}`);
 
     motorDrawings.innerHTML = svgHTML;
 }

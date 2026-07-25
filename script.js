@@ -112,6 +112,25 @@ function dimLabel(cx, cy, text, align = 'center') {
     return `<rect x="${x}" y="${cy - h/2}" width="${w}" height="${h}" rx="3" class="dim-label-bg"/><text x="${x + w/2}" y="${cy + 5}" class="dim-text">${text}</text>`;
 }
 
+// Anillo de aletas de refrigeración (dientes radiales sólidos).
+// skipTest(angleDeg) -> true para omitir un diente en ese ángulo (huecos de caja de bornes, patas, etc.)
+function finRing(cx, cy, innerR, outerR, halfW, count, skipTest) {
+    let s = '';
+    for (let i = 0; i < count; i++) {
+        const angleDeg = (360 / count) * i;
+        if (skipTest && skipTest(angleDeg)) continue;
+        const rad = (angleDeg * Math.PI) / 180;
+        const rx = Math.sin(rad), ry = -Math.cos(rad); // vector radial
+        const tx = Math.cos(rad), ty = Math.sin(rad);  // vector tangencial
+        const p1x = cx + innerR * rx - halfW * tx, p1y = cy + innerR * ry - halfW * ty;
+        const p2x = cx + innerR * rx + halfW * tx, p2y = cy + innerR * ry + halfW * ty;
+        const p3x = cx + outerR * rx + halfW * 0.45 * tx, p3y = cy + outerR * ry + halfW * 0.45 * ty;
+        const p4x = cx + outerR * rx - halfW * 0.45 * tx, p4y = cy + outerR * ry - halfW * 0.45 * ty;
+        s += `<polygon points="${p1x},${p1y} ${p2x},${p2y} ${p3x},${p3y} ${p4x},${p4y}" class="motor-fin-tooth"/>`;
+    }
+    return s;
+}
+
 function renderSVG(H, A, B, C, D, E) {
     svgContainer.style.display = 'none';
     motorDrawings.style.display = 'block';
@@ -150,21 +169,11 @@ function renderSVG(H, A, B, C, D, E) {
     svgHTML += `<circle cx="${cx1}" cy="${cy1}" r="${radioEstator}" class="motor-outline motor-fill"/>`;
     svgHTML += `<circle cx="${cx1}" cy="${cy1}" r="${radioEstator*0.8}" class="motor-inner"/>`;
 
-    // Aletas de refrigeración (carcasa nervada) - dientes radiales sólidos, evitando la caja de bornes
-    const finCountFront = 16;
-    const finInnerR = radioEstator - 3, finOuterR = radioEstator + 16, finHalfW = 5.5;
-    for (let i = 0; i < finCountFront; i++) {
-        const angleDeg = (360 / finCountFront) * i;
-        if (angleDeg > 322 || angleDeg < 38) continue; // hueco para caja de bornes
-        const rad = (angleDeg * Math.PI) / 180;
-        const rx = Math.sin(rad), ry = -Math.cos(rad); // vector radial
-        const tx = Math.cos(rad), ty = Math.sin(rad);  // vector tangencial
-        const p1x = cx1 + finInnerR * rx - finHalfW * tx, p1y = cy1 + finInnerR * ry - finHalfW * ty;
-        const p2x = cx1 + finInnerR * rx + finHalfW * tx, p2y = cy1 + finInnerR * ry + finHalfW * ty;
-        const p3x = cx1 + finOuterR * rx + finHalfW * 0.45 * tx, p3y = cy1 + finOuterR * ry + finHalfW * 0.45 * ty;
-        const p4x = cx1 + finOuterR * rx - finHalfW * 0.45 * tx, p4y = cy1 + finOuterR * ry - finHalfW * 0.45 * ty;
-        svgHTML += `<polygon points="${p1x},${p1y} ${p2x},${p2y} ${p3x},${p3y} ${p4x},${p4y}" class="motor-fin-tooth"/>`;
-    }
+    // Aletas de refrigeración (carcasa nervada) - dientes radiales sólidos.
+    // Se omiten arriba (hueco para caja de bornes) y abajo (las 3 aletas que interferían con el piso/patas)
+    svgHTML += finRing(cx1, cy1, radioEstator - 3, radioEstator + 16, 5.5, 16, angleDeg =>
+        (angleDeg > 322 || angleDeg < 38) || (angleDeg > 143 && angleDeg < 217)
+    );
 
     // Caja de bornes (vista superior, proyectada)
     const tbW = sA * 0.26, tbH = sH * 0.22;
@@ -230,15 +239,6 @@ function renderSVG(H, A, B, C, D, E) {
     const largoCuerpo = sB * 1.5;
     svgHTML += `<rect x="${inicioCuerpo}" y="${cy2 - radioEstator}" width="${largoCuerpo}" height="${radioEstator * 2}" class="motor-outline motor-fill" rx="10"/>`;
 
-    // Aletas de refrigeración: costillas que sobresalen del contorno superior e inferior de la carcasa
-    const finCountLat = Math.max(6, Math.round(largoCuerpo / 22));
-    const finTabW = 6, finTabH = 7;
-    for (let i = 1; i <= finCountLat; i++) {
-        const xFin = inicioCuerpo + (largoCuerpo / (finCountLat + 1)) * i;
-        svgHTML += `<rect x="${xFin - finTabW/2}" y="${cy2 - radioEstator - finTabH + 3}" width="${finTabW}" height="${finTabH}" rx="1.5" class="motor-fin-tab"/>`;
-        svgHTML += `<rect x="${xFin - finTabW/2}" y="${cy2 + radioEstator - 3}" width="${finTabW}" height="${finTabH}" rx="1.5" class="motor-fin-tab"/>`;
-    }
-
     // Tapas / uniones carcasa-escudos (costuras de ensamble)
     svgHTML += `<line x1="${inicioCuerpo + largoCuerpo*0.12}" y1="${cy2 - radioEstator}" x2="${inicioCuerpo + largoCuerpo*0.12}" y2="${cy2 + radioEstator}" class="motor-seam"/>`;
     svgHTML += `<line x1="${inicioCuerpo + largoCuerpo*0.86}" y1="${cy2 - radioEstator}" x2="${inicioCuerpo + largoCuerpo*0.86}" y2="${cy2 + radioEstator}" class="motor-seam"/>`;
@@ -257,6 +257,17 @@ function renderSVG(H, A, B, C, D, E) {
         const yVent = cy2 + i * (radioEstator * 0.32);
         svgHTML += `<line x1="${domeX + domeW*0.2}" y1="${yVent}" x2="${domeX + domeW*0.75}" y2="${yVent}" class="motor-fin"/>`;
     }
+
+    // Rebatimiento ISO E: corte transversal de la carcasa rotado 90° y abatido junto al perfil,
+    // para mostrar la disposición de las aletas (no visibles de canto en la vista lateral)
+    const rebCx = 1050, rebCy = cy2, rebR = 55;
+    svgHTML += `<line x1="${domeX + domeW}" y1="${cy2}" x2="${rebCx - rebR}" y2="${rebCy}" class="rebate-connector"/>`;
+    svgHTML += `<circle cx="${rebCx}" cy="${rebCy}" r="${rebR}" class="motor-outline motor-fill"/>`;
+    svgHTML += `<circle cx="${rebCx}" cy="${rebCy}" r="${rebR*0.7}" class="motor-inner"/>`;
+    svgHTML += finRing(rebCx, rebCy, rebR - 4, rebR + 14, 4.5, 16, null);
+    svgHTML += `<line x1="${rebCx}" y1="${rebCy - rebR - 20}" x2="${rebCx}" y2="${rebCy + rebR + 20}" class="motor-axis"/>`;
+    svgHTML += `<line x1="${rebCx - rebR - 20}" y1="${rebCy}" x2="${rebCx + rebR + 20}" y2="${rebCy}" class="motor-axis"/>`;
+    svgHTML += `<text x="${rebCx}" y="${rebCy + rebR + 35}" class="view-label">REBATIMIENTO</text>`;
 
     // Patas laterales como bloques rectangulares con orificios ocultos (líneas discontinuas)
     [ejeCentralPata1, ejeCentralPata2].forEach(cxFoot => {
